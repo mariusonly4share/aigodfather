@@ -1,0 +1,34 @@
+{
+  "name": "aigodfather",
+  "version": "1.0.0",
+  "description": "Official JavaScript/TypeScript SDK for AIGodfather - AI Agent Monitoring",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "files": ["dist", "README.md", "LICENSE"],
+  "homepage": "https://aigodfather.ai",
+  "bugs": {
+    "url": "https://github.com/aigodfather/aigodfather-sdk/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/aigodfather/aigodfather-sdk.git",
+    "directory": "js"
+  },
+  "keywords": [
+    "ai", "monitoring", "agents", "aigodfather",
+    "observability", "incidents", "eu-ai-act",
+    "error-tracking", "event-tracking", "typescript"
+  ],
+  "license": "MIT",
+  "scripts": {
+    "build": "tsup src/index.ts --format cjs,esm --dts --clean",
+    "dev": "tsup src/index.ts --watch",
+    "prepublishOnly": "npm run build"
+  },
+  "devDependencies": {
+    "tsup": "^8.0.0",
+    "typescript": "^5.0.0",
+    "@types/node": "^20.0.0"
+  }
+}

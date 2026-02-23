@@ -1,0 +1,23 @@
+{
+  "name": "aigodfather/aigodfather-php",
+  "description": "Official PHP SDK for AIGodfather - AI Agent Monitoring & EU AI Act Compliance",
+  "version": "2.0.0",
+  "type": "library",
+  "license": "MIT",
+  "homepage": "https://aigodfather.ai",
+  "keywords": ["ai", "monitoring", "agents", "aigodfather", "observability", "eu-ai-act"],
+  "require": {
+    "php": ">=7.4",
+    "ext-curl": "*",
+    "ext-json": "*"
+  },
+  "autoload": {
+    "psr-4": {
+      "AIGodfather\\": "src/"
+    }
+  },
+  "support": {
+    "issues": "https://github.com/aigodfather/aigodfather-sdk/issues",
+    "source": "https://github.com/aigodfather/aigodfather-sdk"
+  }
+}

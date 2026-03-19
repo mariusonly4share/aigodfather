@@ -4,7 +4,7 @@
   "version": "2.0.0",
   "type": "library",
   "license": "MIT",
-  "homepage": "https://aigodfather.ai",
+  "homepage": "https://aigodfather.com",
   "keywords": ["ai", "monitoring", "agents", "aigodfather", "observability", "eu-ai-act"],
   "require": {
     "php": ">=7.4",

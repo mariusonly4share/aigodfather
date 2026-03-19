@@ -1,6 +1,6 @@
 # AIGodfather Python SDK
 
-Official Python SDK for [AIGodfather](https://aigodfather.ai) —
+Official Python SDK for [AIGodfather](https://aigodfather.com) —
 AI Agent Monitoring & EU AI Act Compliance Platform.
 
 ## Installation
@@ -43,7 +43,7 @@ ai.track(
 ```python
 ai = AIGodfather(
     api_key='agf_live_...',                  # required
-    base_url='https://api.aigodfather.ai',   # optional
+    base_url='https://aigodfather.com/api',   # optional
     debug=False,                              # optional — enable debug logging
     timeout=10,                               # optional — request timeout in seconds
     default_tags=['production'],              # optional — tags added to every event
@@ -70,7 +70,7 @@ ai = AIGodfather(
 
 ## Get Your API Key
 
-1. Sign up at [https://aigodfather.ai](https://aigodfather.ai)
+1. Sign up at [https://aigodfather.com](https://aigodfather.com)
 2. Create an agent
 3. Go to Agent → Connection → API Keys
 4. Generate key → copy it

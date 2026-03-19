@@ -1,6 +1,6 @@
 # AIGodfather PHP SDK
 
-Official PHP SDK for [AIGodfather](https://aigodfather.ai) —
+Official PHP SDK for [AIGodfather](https://aigodfather.com) —
 AI Agent Monitoring & EU AI Act Compliance Platform.
 
 ## Installation
@@ -53,7 +53,7 @@ if ($result['status'] === 'pending_approval') {
 ```php
 $ai = new AIGodfather([
     'apiKey' => 'agf_live_...',              // required
-    'baseUrl' => 'https://api.aigodfather.ai', // optional
+    'baseUrl' => 'https://aigodfather.com/api', // optional
     'debug' => false,                          // optional
     'timeout' => 10,                           // optional — seconds
     'maxRetries' => 3,                         // optional

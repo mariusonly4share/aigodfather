@@ -2,7 +2,7 @@
  * AIGodfather SDK for JavaScript/TypeScript
  * Official SDK for AI Agent Monitoring & EU AI Act Compliance
  *
- * @see https://aigodfather.ai/docs
+ * @see https://aigodfather.com/docs
  */
 
 const SDK_VERSION = '2.0.0'
@@ -12,9 +12,9 @@ const SDK_VERSION = '2.0.0'
 export type Severity = 'low' | 'medium' | 'high' | 'critical'
 
 export interface AIGodfatherConfig {
-  /** Your API key (starts with agf_live_ or agf_test_) */
+  /** Your API key (starts with agf_live_) */
   apiKey: string
-  /** Base URL override (default: https://api.aigodfather.ai) */
+  /** Base URL override (default: https://aigodfather.com/api) */
   baseUrl?: string
   /** Enable debug logging to console (default: false) */
   debug?: boolean
@@ -166,6 +166,7 @@ export class AIGodfather {
   private defaultMetadata: Record<string, unknown>
   private onBlock?: (error: BlockedError) => void
   private onApprovalRequired?: (approval: ApprovalInfo) => void
+  private currentTraceId: string | null = null
 
   constructor(config: AIGodfatherConfig) {
     if (!config.apiKey) {
@@ -173,7 +174,7 @@ export class AIGodfather {
     }
 
     this.apiKey = config.apiKey
-    this.baseUrl = (config.baseUrl || 'https://api.aigodfather.ai').replace(/\/+$/, '')
+    this.baseUrl = (config.baseUrl || 'https://aigodfather.com/api').replace(/\/+$/, '')
     this.debug = config.debug ?? false
     this.timeout = config.timeout ?? 10_000
     this.maxRetries = config.maxRetries ?? 3
@@ -298,6 +299,100 @@ export class AIGodfather {
       reason: data.reason,
       decidedAt: data.decided_at,
     }
+  }
+
+  // ── Tracing Methods ──────────────────────────────
+
+  /**
+   * Start a new trace. Stores the trace ID internally so subsequent
+   * startSpan() calls auto-link to this trace.
+   */
+  async startTrace(options: {
+    name: string
+    input?: unknown
+    tags?: string[]
+    session_id?: string
+    metadata?: Record<string, unknown>
+  }): Promise<string> {
+    const data = await this.request<{ trace_id: string }>('POST', '/v1/traces', {
+      name: options.name,
+      input: options.input,
+      tags: options.tags,
+      session_id: options.session_id,
+      metadata: options.metadata,
+    })
+    this.currentTraceId = data.trace_id
+    return data.trace_id
+  }
+
+  /**
+   * End an existing trace. Clears the internal trace ID if it matches.
+   */
+  async endTrace(traceId: string, options: {
+    output?: unknown
+    status?: 'success' | 'error'
+  } = {}): Promise<void> {
+    await this.request<{ ok: boolean }>('PATCH', `/v1/traces/${traceId}`, {
+      output: options.output,
+      status: options.status ?? 'success',
+    })
+    if (this.currentTraceId === traceId) {
+      this.currentTraceId = null
+    }
+  }
+
+  /**
+   * Start a new span within a trace. If trace_id is not provided,
+   * uses the internally stored currentTraceId from startTrace().
+   */
+  async startSpan(options: {
+    name: string
+    type?: 'llm' | 'tool' | 'retrieval' | 'agent' | 'chain' | 'span'
+    trace_id?: string
+    parent_span_id?: string
+    input?: unknown
+    model?: string
+    provider?: string
+    metadata?: Record<string, unknown>
+  }): Promise<string> {
+    const traceId = options.trace_id ?? this.currentTraceId
+    if (!traceId) {
+      throw new Error('[AIGodfather] No trace_id provided and no active trace. Call startTrace() first.')
+    }
+    const data = await this.request<{ span_id: string }>('POST', '/v1/spans', {
+      name: options.name,
+      type: options.type ?? 'span',
+      trace_id: traceId,
+      parent_span_id: options.parent_span_id,
+      input: options.input,
+      model: options.model,
+      provider: options.provider,
+      metadata: options.metadata,
+    })
+    return data.span_id
+  }
+
+  /**
+   * End an existing span with output data and token usage.
+   */
+  async endSpan(spanId: string, options: {
+    output?: unknown
+    status?: 'success' | 'error'
+    prompt_tokens?: number
+    completion_tokens?: number
+    total_tokens?: number
+    cost_usd?: number
+    error_message?: string
+  } = {}): Promise<void> {
+    await this.request<{ ok: boolean }>('PATCH', `/v1/spans/${spanId}`, {
+      output: options.output,
+      status: options.status ?? 'success',
+      prompt_tokens: options.prompt_tokens,
+      completion_tokens: options.completion_tokens,
+      total_tokens: options.total_tokens,
+      cost_usd: options.cost_usd,
+      error_message: options.error_message,
+    })
   }
 
   // ── Private Helpers ────────────────────────────────

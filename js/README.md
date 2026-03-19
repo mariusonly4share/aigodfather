@@ -1,6 +1,6 @@
 # AIGodfather JavaScript/TypeScript SDK
 
-Official JavaScript/TypeScript SDK for [AIGodfather](https://aigodfather.ai) —
+Official JavaScript/TypeScript SDK for [AIGodfather](https://aigodfather.com) —
 AI Agent Monitoring & EU AI Act Compliance Platform.
 
 ## Installation
@@ -59,7 +59,7 @@ if (result.status === 'pending_approval') {
 ```typescript
 const ai = new AIGodfather({
   apiKey: 'agf_live_...',                  // required
-  baseUrl: 'https://api.aigodfather.ai',   // optional
+  baseUrl: 'https://aigodfather.com/api',   // optional
   debug: false,                             // optional — log requests to console
   timeout: 10000,                           // optional — request timeout in ms
   maxRetries: 3,                            // optional — retries on 429/5xx
@@ -115,7 +115,7 @@ try {
 
 ## Get Your API Key
 
-1. Sign up at [https://aigodfather.ai](https://aigodfather.ai)
+1. Sign up at [https://aigodfather.com](https://aigodfather.com)
 2. Create an agent
 3. Go to Agent → Connection → API Keys
 4. Generate key → copy it

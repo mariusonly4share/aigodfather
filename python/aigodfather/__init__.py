@@ -2,7 +2,7 @@
 AIGodfather SDK for Python
 Official SDK for AI Agent Monitoring & EU AI Act Compliance
 
-https://aigodfather.ai/docs
+https://aigodfather.com/docs
 """
 
 from __future__ import annotations
@@ -71,8 +71,8 @@ class AIGodfather:
     """AIGodfather Python SDK client.
 
     Args:
-        api_key: Your API key (starts with agf_live_ or agf_test_).
-        base_url: Base URL override (default: https://api.aigodfather.ai).
+        api_key: Your API key (starts with agf_live_).
+        base_url: Base URL override (default: https://aigodfather.com/api).
         debug: Enable debug logging (default: False).
         timeout: Request timeout in seconds (default: 10).
         max_retries: Max retries on 429/5xx errors (default: 3).
@@ -85,7 +85,7 @@ class AIGodfather:
     def __init__(
         self,
         api_key: str,
-        base_url: str = "https://api.aigodfather.ai",
+        base_url: str = "https://aigodfather.com/api",
         debug: bool = False,
         timeout: int = 10,
         max_retries: int = 3,
@@ -106,6 +106,7 @@ class AIGodfather:
         self.default_metadata: Dict[str, Any] = default_metadata or {}
         self.on_block = on_block
         self.on_approval_required = on_approval_required
+        self._current_trace_id: Optional[str] = None
 
         if self.debug:
             logging.basicConfig(level=logging.DEBUG)
@@ -254,6 +255,139 @@ class AIGodfather:
             Dict with keys: status, reason, decided_at
         """
         return self._request("GET", f"/v1/approvals/{approval_id}")
+
+    # ── Tracing Methods ──────────────────────────────
+
+    def start_trace(
+        self,
+        name: str,
+        input: Optional[Any] = None,
+        tags: Optional[List[str]] = None,
+        session_id: Optional[str] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> str:
+        """Start a new trace. Stores the trace ID internally so subsequent
+        start_span() calls auto-link to this trace.
+
+        Args:
+            name: Name of the trace.
+            input: Input data (any JSON-serializable value).
+            tags: Tags for filtering.
+            session_id: Optional session identifier.
+            metadata: Arbitrary metadata dict.
+
+        Returns:
+            The trace_id string.
+        """
+        data = self._request("POST", "/v1/traces", {
+            "name": name,
+            "input": input,
+            "tags": tags,
+            "session_id": session_id,
+            "metadata": metadata,
+        })
+        self._current_trace_id = data["trace_id"]
+        return data["trace_id"]
+
+    def end_trace(
+        self,
+        trace_id: str,
+        output: Optional[Any] = None,
+        status: str = "success",
+    ) -> None:
+        """End an existing trace. Clears the internal trace ID if it matches.
+
+        Args:
+            trace_id: The trace ID to end.
+            output: Output data (any JSON-serializable value).
+            status: 'success' or 'error'.
+        """
+        self._request("PATCH", f"/v1/traces/{trace_id}", {
+            "output": output,
+            "status": status,
+        })
+        if self._current_trace_id == trace_id:
+            self._current_trace_id = None
+
+    def start_span(
+        self,
+        name: str,
+        type: str = "span",
+        trace_id: Optional[str] = None,
+        parent_span_id: Optional[str] = None,
+        input: Optional[Any] = None,
+        model: Optional[str] = None,
+        provider: Optional[str] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> str:
+        """Start a new span within a trace.
+
+        If trace_id is not provided, uses the internally stored trace ID
+        from start_trace().
+
+        Args:
+            name: Name of the span.
+            type: One of 'llm', 'tool', 'retrieval', 'agent', 'chain', 'span'.
+            trace_id: Trace to attach to (auto-detected if omitted).
+            parent_span_id: Optional parent span for nesting.
+            input: Input data.
+            model: Model name (for LLM spans).
+            provider: Provider name (for LLM spans).
+            metadata: Arbitrary metadata dict.
+
+        Returns:
+            The span_id string.
+        """
+        resolved_trace_id = trace_id or self._current_trace_id
+        if not resolved_trace_id:
+            raise ValueError(
+                "[AIGodfather] No trace_id provided and no active trace. "
+                "Call start_trace() first."
+            )
+        data = self._request("POST", "/v1/spans", {
+            "name": name,
+            "type": type,
+            "trace_id": resolved_trace_id,
+            "parent_span_id": parent_span_id,
+            "input": input,
+            "model": model,
+            "provider": provider,
+            "metadata": metadata,
+        })
+        return data["span_id"]
+
+    def end_span(
+        self,
+        span_id: str,
+        output: Optional[Any] = None,
+        status: str = "success",
+        prompt_tokens: Optional[int] = None,
+        completion_tokens: Optional[int] = None,
+        total_tokens: Optional[int] = None,
+        cost_usd: Optional[float] = None,
+        error_message: Optional[str] = None,
+    ) -> None:
+        """End an existing span with output data and token usage.
+
+        Args:
+            span_id: The span ID to end.
+            output: Output data.
+            status: 'success' or 'error'.
+            prompt_tokens: Number of prompt tokens used.
+            completion_tokens: Number of completion tokens used.
+            total_tokens: Total tokens used.
+            cost_usd: Cost in USD.
+            error_message: Error message if status is 'error'.
+        """
+        self._request("PATCH", f"/v1/spans/{span_id}", {
+            "output": output,
+            "status": status,
+            "prompt_tokens": prompt_tokens,
+            "completion_tokens": completion_tokens,
+            "total_tokens": total_tokens,
+            "cost_usd": cost_usd,
+            "error_message": error_message,
+        })
 
     # ── Private Helpers ───────────────────────────────
 

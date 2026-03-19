@@ -7,11 +7,11 @@ setup(
     name='aigodfather',
     version="2.0.0",
     author='AIGodfather',
-    author_email='support@aigodfather.ai',
+    author_email='support@aigodfather.com',
     description='Official Python SDK for AIGodfather - AI Agent Monitoring',
     long_description=long_description,
     long_description_content_type='text/markdown',
-    url='https://aigodfather.ai',
+    url='https://aigodfather.com',
     project_urls={
         'Source': 'https://github.com/aigodfather/aigodfather-sdk',
         'Issues': 'https://github.com/aigodfather/aigodfather-sdk/issues'

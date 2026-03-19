@@ -1,6 +1,6 @@
 # AIGodfather SDK
 
-Official SDKs for [AIGodfather](https://aigodfather.ai) —
+Official SDKs for [AIGodfather](https://aigodfather.com) —
 AI Agent Monitoring & EU AI Act Compliance Platform.
 
 Monitor your AI agents, track events, detect anomalies,
@@ -94,16 +94,16 @@ if ($result['status'] === 'pending_approval') {
 
 ## Get Your API Key
 
-1. Sign up at [https://aigodfather.ai](https://aigodfather.ai)
+1. Sign up at [https://aigodfather.com](https://aigodfather.com)
 2. Create an agent
 3. Go to Agent → Connection → API Keys
 4. Generate key → copy it
 
 ## Documentation
 
-Full docs: [https://aigodfather.ai/docs](https://aigodfather.ai/docs)
+Full docs: [https://aigodfather.com/docs](https://aigodfather.com/docs)
 
 ## Support
 
-- Email: support@aigodfather.ai
+- Email: support@aigodfather.com
 - Issues: [github.com/aigodfather/aigodfather-sdk/issues](https://github.com/aigodfather/aigodfather-sdk/issues)

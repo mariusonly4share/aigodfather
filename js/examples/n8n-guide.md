@@ -12,7 +12,7 @@ Monitor your n8n workflows with AIGodfather.
 | Field | Value |
 |-------|-------|
 | Method | `POST` |
-| URL | `https://api.aigodfather.ai/v1/events` |
+| URL | `https://aigodfather.com/api/v1/events` |
 
 ### Headers
 
@@ -72,7 +72,7 @@ To test your API key, send a GET request:
 | Field | Value |
 |-------|-------|
 | Method | `GET` |
-| URL | `https://api.aigodfather.ai/v1/ping` |
+| URL | `https://aigodfather.com/api/v1/ping` |
 | Header | `Authorization: Bearer agf_live_YOUR_KEY` |
 
 A successful response returns your agent info and usage limits.

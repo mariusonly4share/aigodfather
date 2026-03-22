@@ -53,7 +53,7 @@ class AgentPausedError extends \RuntimeException
 
 class AIGodfather
 {
-    const SDK_VERSION = '2.0.0';
+    const SDK_VERSION = '2.1.0';
 
     private string $apiKey;
     private string $baseUrl;
@@ -294,7 +294,7 @@ class AIGodfather
         }
 
         // 201 — Success
-        return [
+        $result = [
             'success' => $data['success'] ?? true,
             'status' => 'recorded',
             'event_id' => $data['event_id'] ?? null,
@@ -306,6 +306,15 @@ class AIGodfather
             'warning' => $data['warning'] ?? null,
             'timestamp' => $data['timestamp'] ?? null,
         ];
+        if (isset($data['sigma_anchored'])) {
+            $result['sigma'] = [
+                'anchored' => $data['sigma_anchored'] ?? false,
+                'anchor_id' => $data['sigma_anchor_id'] ?? null,
+                'nodes_confirmed' => $data['sigma_nodes_count'] ?? 0,
+                'anchored_at' => $data['sigma_anchored_at'] ?? null,
+            ];
+        }
+        return $result;
     }
 
     /**

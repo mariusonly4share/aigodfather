@@ -5,7 +5,7 @@
  * @see https://aigodfather.com/docs
  */
 
-const SDK_VERSION = '2.0.0'
+const SDK_VERSION = '2.1.0'
 
 // ── Types ──────────────────────────────────────────────
 
@@ -83,6 +83,13 @@ export interface PingResponse {
   }
 }
 
+export interface SigmaAnchorInfo {
+  anchored: boolean
+  anchorId: string | null
+  nodesConfirmed: number
+  anchoredAt: string | null
+}
+
 export interface EventResponse {
   success: boolean
   status: 'recorded' | 'blocked' | 'pending_approval'
@@ -98,6 +105,8 @@ export interface EventResponse {
   approvalId?: string
   /** Present when status is 'pending_approval' */
   pollUrl?: string
+  /** AIGP-Σ anchor info (present when Sigma is enabled) */
+  sigma?: SigmaAnchorInfo
 }
 
 export interface ApprovalInfo {
@@ -490,6 +499,12 @@ export class AIGodfather {
       aiClassification: data.ai_classification ?? null,
       warning: data.warning ?? null,
       timestamp: data.timestamp ?? new Date().toISOString(),
+      sigma: data.sigma_anchored != null ? {
+        anchored: data.sigma_anchored ?? false,
+        anchorId: data.sigma_anchor_id ?? null,
+        nodesConfirmed: data.sigma_nodes_count ?? 0,
+        anchoredAt: data.sigma_anchored_at ?? null,
+      } : undefined,
     }
     this.log('Response:', JSON.stringify(result, null, 2))
     return result

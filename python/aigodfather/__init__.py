@@ -13,7 +13,7 @@ from typing import Any, Callable, Dict, List, Optional
 
 import requests
 
-__version__ = "2.0.0"
+__version__ = "2.1.0"
 __all__ = [
     "AIGodfather",
     "BlockedError",
@@ -452,7 +452,7 @@ class AIGodfather:
             }
 
         # 201 — Success
-        result = {
+        result: Dict[str, Any] = {
             "success": data.get("success", True),
             "status": "recorded",
             "event_id": data.get("event_id"),
@@ -464,6 +464,13 @@ class AIGodfather:
             "warning": data.get("warning"),
             "timestamp": data.get("timestamp"),
         }
+        if data.get("sigma_anchored") is not None:
+            result["sigma"] = {
+                "anchored": data.get("sigma_anchored", False),
+                "anchor_id": data.get("sigma_anchor_id"),
+                "nodes_confirmed": data.get("sigma_nodes_count", 0),
+                "anchored_at": data.get("sigma_anchored_at"),
+            }
         self._log("Response:", result)
         return result
 

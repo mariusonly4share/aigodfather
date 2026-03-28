@@ -16,6 +16,8 @@ export interface AIGodfatherConfig {
   apiKey: string
   /** Base URL override (default: https://aigodfather.com/api) */
   baseUrl?: string
+  /** AIGP-Σ Registry URL override (default: https://api.aigpsigma.ai) */
+  sigmaRegistryUrl?: string
   /** Enable debug logging to console (default: false) */
   debug?: boolean
   /** Request timeout in ms (default: 10000) */
@@ -177,6 +179,18 @@ export class AIGodfather {
   private onApprovalRequired?: (approval: ApprovalInfo) => void
   private currentTraceId: string | null = null
 
+  /**
+   * AIGP-Σ Registry client — verify certificates, get badges, list audit actions.
+   * All methods are public (no API key needed).
+   *
+   * @example
+   * ```ts
+   * const cert = await ai.sigma.verify('aigp-cert-xxxxxxxx-xxx')
+   * const badge = ai.sigma.badgeUrl('aigp-cert-xxxxxxxx-xxx')
+   * ```
+   */
+  public readonly sigma: AigpSigma
+
   constructor(config: AIGodfatherConfig) {
     if (!config.apiKey) {
       throw new Error('[AIGodfather] apiKey is required')
@@ -191,6 +205,7 @@ export class AIGodfather {
     this.defaultMetadata = config.defaultMetadata ?? {}
     this.onBlock = config.onBlock
     this.onApprovalRequired = config.onApprovalRequired
+    this.sigma = new AigpSigma(config.sigmaRegistryUrl, this.timeout)
   }
 
   // ── Public Methods ─────────────────────────────────
@@ -588,6 +603,169 @@ export class AIGodfather {
     const data = (await response.json()) as T
     this.log('Response:', JSON.stringify(data, null, 2))
     return data
+  }
+}
+
+// ── AIGP-Σ Core Types ──────────────────────────────────
+
+export interface SigmaCertificate {
+  credential_id: string
+  agent_name: string
+  tenant_id: string
+  issued_by: string
+  issued_at: string
+  expires_at: string
+  scope: string[]
+  /** `"active"` | `"revoked"` | `"expired"` */
+  status: string
+  registry_url: string
+  badge_url: string
+  model_hash?: string | null
+  sdk_hash?: string | null
+}
+
+export interface SigmaPaymentAction {
+  id: string
+  credential_id: string
+  action_type: string
+  amount: string
+  currency: string
+  recipient: string
+  protocol: string
+  scope_check: string
+  verifiable_intent_ref?: string | null
+  /** SHA3-512 hash — links into the audit chain */
+  action_hash: string
+  created_at: string
+  registry_url: string
+}
+
+export interface SigmaRegistryHealth {
+  service: string
+  version: string
+  status: string
+  certificates: number
+  payment_actions: number
+  whitepapers: string[]
+}
+
+export class SigmaError extends Error {
+  readonly code: 'not_found' | 'registry' | 'http'
+  constructor(code: SigmaError['code'], message: string) {
+    super(message)
+    this.name = 'SigmaError'
+    this.code = code
+  }
+}
+
+// ── AIGP-Σ SDK Class ──────────────────────────────────
+
+const DEFAULT_SIGMA_REGISTRY = 'https://api.aigpsigma.ai'
+
+/**
+ * AIGP-Σ Registry client (JS/TS port of the official Rust SDK).
+ *
+ * All methods call **public** endpoints — no API key required.
+ * To issue or revoke certificates, purchase a plan at https://aigpsigma.ai
+ *
+ * @example
+ * ```ts
+ * import { AigpSigma } from 'aigodfather'
+ *
+ * const sigma = new AigpSigma()
+ * const cert = await sigma.verify('aigp-cert-xxxxxxxx-xxx')
+ * console.log(cert.agent_name, cert.status)
+ * ```
+ */
+export class AigpSigma {
+  private registryUrl: string
+  private timeout: number
+
+  constructor(registryUrl?: string, timeout = 10_000) {
+    this.registryUrl = (registryUrl ?? DEFAULT_SIGMA_REGISTRY).replace(/\/+$/, '')
+    this.timeout = timeout
+  }
+
+  /**
+   * Verify a certificate by credential ID.
+   * Returns the full certificate record including status, scope, expiry.
+   */
+  async verify(credentialId: string): Promise<SigmaCertificate> {
+    const url = `${this.registryUrl}/v1/registry/${credentialId}`
+    const resp = await this.sigmaFetch(url)
+
+    if (resp.status === 404) {
+      throw new SigmaError('not_found', `Certificate not found: ${credentialId}`)
+    }
+    if (!resp.ok) {
+      throw new SigmaError('http', `HTTP ${resp.status}: ${await resp.text().catch(() => 'Unknown')}`)
+    }
+    return resp.json()
+  }
+
+  /**
+   * Check if a certificate is currently active.
+   * Returns `true` only if the certificate exists and has status `"active"`.
+   */
+  async isActive(credentialId: string): Promise<boolean> {
+    try {
+      const cert = await this.verify(credentialId)
+      return cert.status === 'active'
+    } catch {
+      return false
+    }
+  }
+
+  /**
+   * Return the embeddable SVG badge URL for a certificate.
+   * No network call — URL is constructed locally.
+   */
+  badgeUrl(credentialId: string): string {
+    return `${this.registryUrl}/v1/badge/${credentialId}.svg`
+  }
+
+  /**
+   * List all payment action blocks recorded for a certificate.
+   * Each action contains a SHA3-512 hash linking it into an immutable audit chain.
+   */
+  async listActions(credentialId: string): Promise<SigmaPaymentAction[]> {
+    const url = `${this.registryUrl}/v1/registry/${credentialId}/actions`
+    const resp = await this.sigmaFetch(url)
+    if (!resp.ok) {
+      throw new SigmaError('registry', `Failed to list actions: HTTP ${resp.status}`)
+    }
+    const body = await resp.json()
+    return body.actions ?? []
+  }
+
+  /**
+   * Check registry health and availability.
+   */
+  async ping(): Promise<SigmaRegistryHealth> {
+    const url = `${this.registryUrl}/health`
+    const resp = await this.sigmaFetch(url)
+    if (!resp.ok) {
+      throw new SigmaError('registry', `Registry health check failed: HTTP ${resp.status}`)
+    }
+    return resp.json()
+  }
+
+  private async sigmaFetch(url: string): Promise<Response> {
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), this.timeout)
+    try {
+      return await fetch(url, {
+        headers: { 'User-Agent': `aigpsigma-js/${SDK_VERSION}` },
+        signal: controller.signal,
+      })
+    } catch (err: any) {
+      if (err.name === 'AbortError') {
+        throw new SigmaError('http', `Request timed out after ${this.timeout}ms`)
+      }
+      throw new SigmaError('http', err.message ?? 'Network error')
+    } finally {
+      clearTimeout(timer)
+    }
   }
 }
 

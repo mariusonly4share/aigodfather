@@ -32,6 +32,19 @@ export interface AIGodfatherConfig {
   onBlock?: (error: BlockedError) => void
   /** Called when an action requires human approval */
   onApprovalRequired?: (approval: ApprovalInfo) => void
+  /**
+   * Auto-start monitoring on init (default: true).
+   * When enabled, the SDK will:
+   * - Send agent_started event on init
+   * - Ping the platform to register connection
+   * - Send heartbeats every heartbeatInterval ms
+   * - Capture uncaught exceptions as critical events
+   */
+  autoStart?: boolean
+  /** Heartbeat interval in ms (default: 60000 = 1 min) */
+  heartbeatInterval?: number
+  /** Capture uncaught exceptions/rejections (default: true) */
+  captureExceptions?: boolean
 }
 
 export interface TrackOptions {
@@ -178,6 +191,8 @@ export class AIGodfather {
   private onBlock?: (error: BlockedError) => void
   private onApprovalRequired?: (approval: ApprovalInfo) => void
   private currentTraceId: string | null = null
+  private heartbeatTimer: ReturnType<typeof setInterval> | null = null
+  private started = false
 
   /**
    * AIGP-Σ Registry client — verify certificates, get badges, list audit actions.
@@ -206,6 +221,73 @@ export class AIGodfather {
     this.onBlock = config.onBlock
     this.onApprovalRequired = config.onApprovalRequired
     this.sigma = new AigpSigma(config.sigmaRegistryUrl, this.timeout)
+
+    // Auto-start monitoring
+    if (config.autoStart !== false) {
+      this.start(config.heartbeatInterval, config.captureExceptions)
+    }
+  }
+
+  /**
+   * Start auto-monitoring. Called automatically unless autoStart: false.
+   * Sends agent_started event, registers connection, starts heartbeat,
+   * and captures uncaught exceptions.
+   */
+  start(heartbeatInterval = 60_000, captureExceptions = true): void {
+    if (this.started) return
+    this.started = true
+
+    // Send agent_started event + ping (non-blocking)
+    this.track('agent_started', {
+      severity: 'low',
+      message: 'Agent initialized',
+      metadata: { sdk_version: SDK_VERSION, timestamp: new Date().toISOString() },
+    }).catch(() => {})
+
+    this.ping().catch(() => {})
+
+    // Heartbeat: periodic ping
+    this.heartbeatTimer = setInterval(() => {
+      this.ping().catch(() => {})
+    }, heartbeatInterval)
+
+    // Unref timer if in Node.js (so it doesn't keep process alive)
+    if (this.heartbeatTimer && typeof (this.heartbeatTimer as unknown as { unref?: () => void }).unref === 'function') {
+      (this.heartbeatTimer as unknown as { unref: () => void }).unref()
+    }
+
+    // Capture uncaught exceptions
+    if (captureExceptions && typeof process !== 'undefined' && process.on) {
+      process.on('uncaughtException', (err: Error) => {
+        this.critical(`Uncaught exception: ${err.message}`, {
+          stack: err.stack,
+          name: err.name,
+        }).catch(() => {})
+      })
+      process.on('unhandledRejection', (reason: unknown) => {
+        const msg = reason instanceof Error ? reason.message : String(reason)
+        this.error(`Unhandled rejection: ${msg}`, {
+          stack: reason instanceof Error ? reason.stack : undefined,
+        }).catch(() => {})
+      })
+    }
+
+    this.log('Auto-monitoring started (heartbeat + exception capture)')
+  }
+
+  /**
+   * Stop auto-monitoring. Sends agent_stopped event and clears heartbeat.
+   */
+  async stop(): Promise<void> {
+    if (this.heartbeatTimer) {
+      clearInterval(this.heartbeatTimer)
+      this.heartbeatTimer = null
+    }
+    this.started = false
+    await this.track('agent_stopped', {
+      severity: 'low',
+      message: 'Agent shutting down',
+    }).catch(() => {})
   }
 
   // ── Public Methods ─────────────────────────────────

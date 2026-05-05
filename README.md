@@ -1,6 +1,6 @@
 # AIGodfather SDK
 
-Official SDKs for [AIGodfather](https://aigodfather.com) —
+Official SDKs for [AIGodfather](https://www.aigodfather.ai) —
 AI Agent Monitoring & EU AI Act Compliance Platform.
 
 Monitor your AI agents, track events, detect anomalies,
@@ -10,9 +10,9 @@ enforce rules, and stay EU AI Act compliant.
 
 | Package | Install | Version |
 |---------|---------|---------|
-| JavaScript/TypeScript | `npm install aigodfather` | 2.0.0 |
-| Python | `pip install aigodfather` | 2.0.0 |
-| PHP | `composer require aigodfather/aigodfather-php` | 2.0.0 |
+| JavaScript/TypeScript | `npm install aigodfather` | 2.1.0 |
+| Python | `pip install aigodfather` | 2.1.0 |
+| PHP | `composer require aigodfather/aigodfather-php` | 2.1.0 |
 
 ## Quick Start
 
@@ -94,16 +94,16 @@ if ($result['status'] === 'pending_approval') {
 
 ## Get Your API Key
 
-1. Sign up at [https://aigodfather.com](https://aigodfather.com)
+1. Sign up at [https://www.aigodfather.ai](https://www.aigodfather.ai)
 2. Create an agent
 3. Go to Agent → Connection → API Keys
 4. Generate key → copy it
 
 ## Documentation
 
-Full docs: [https://aigodfather.com/docs](https://aigodfather.com/docs)
+Full docs: [https://www.aigodfather.ai/docs](https://www.aigodfather.ai/docs)
 
 ## Support
 
 - Email: support@aigodfather.com
-- Issues: [github.com/aigodfather/aigodfather-sdk/issues](https://github.com/aigodfather/aigodfather-sdk/issues)
+- Issues: [github.com/mariusonly4share/aigodfather/issues](https://github.com/mariusonly4share/aigodfather/issues)

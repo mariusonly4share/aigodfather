@@ -14,7 +14,7 @@ export type Severity = 'low' | 'medium' | 'high' | 'critical'
 export interface AIGodfatherConfig {
   /** Your API key (starts with agf_live_) */
   apiKey: string
-  /** Base URL override (default: https://aigodfather.com/api) */
+  /** Base URL override (default: https://www.aigodfather.ai/api) */
   baseUrl?: string
   /** AIGP-Σ Registry URL override (default: https://api.aigpsigma.ai) */
   sigmaRegistryUrl?: string
@@ -197,7 +197,7 @@ export class AIGodfather {
     }
 
     this.apiKey = config.apiKey
-    this.baseUrl = (config.baseUrl || 'https://aigodfather.com/api').replace(/\/+$/, '')
+    this.baseUrl = (config.baseUrl || 'https://www.aigodfather.ai/api').replace(/\/+$/, '')
     this.debug = config.debug ?? false
     this.timeout = config.timeout ?? 10_000
     this.maxRetries = config.maxRetries ?? 3

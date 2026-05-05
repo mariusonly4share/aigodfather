@@ -53,7 +53,7 @@ if ($result['status'] === 'pending_approval') {
 ```php
 $ai = new AIGodfather([
     'apiKey' => 'agf_live_...',              // required
-    'baseUrl' => 'https://aigodfather.com/api', // optional
+    'baseUrl' => 'https://www.aigodfather.ai/api', // optional
     'debug' => false,                          // optional
     'timeout' => 10,                           // optional — seconds
     'maxRetries' => 3,                         // optional

@@ -70,7 +70,7 @@ class AIGodfather
     /**
      * @param array $config {
      *   @type string   $apiKey           Required. Your API key.
-     *   @type string   $baseUrl          Optional. Default: https://aigodfather.com/api
+     *   @type string   $baseUrl          Optional. Default: https://www.aigodfather.ai/api
      *   @type bool     $debug            Optional. Default: false
      *   @type int      $timeout          Optional. Timeout in seconds. Default: 10
      *   @type int      $maxRetries       Optional. Default: 3
@@ -87,7 +87,7 @@ class AIGodfather
         }
 
         $this->apiKey = $config['apiKey'];
-        $this->baseUrl = rtrim($config['baseUrl'] ?? 'https://aigodfather.com/api', '/');
+        $this->baseUrl = rtrim($config['baseUrl'] ?? 'https://www.aigodfather.ai/api', '/');
         $this->debug = $config['debug'] ?? false;
         $this->timeout = $config['timeout'] ?? 10;
         $this->maxRetries = $config['maxRetries'] ?? 3;

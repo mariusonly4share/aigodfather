@@ -72,7 +72,7 @@ class AIGodfather:
 
     Args:
         api_key: Your API key (starts with agf_live_).
-        base_url: Base URL override (default: https://aigodfather.com/api).
+        base_url: Base URL override (default: https://www.aigodfather.ai/api).
         debug: Enable debug logging (default: False).
         timeout: Request timeout in seconds (default: 10).
         max_retries: Max retries on 429/5xx errors (default: 3).
@@ -85,7 +85,7 @@ class AIGodfather:
     def __init__(
         self,
         api_key: str,
-        base_url: str = "https://aigodfather.com/api",
+        base_url: str = "https://www.aigodfather.ai/api",
         debug: bool = False,
         timeout: int = 10,
         max_retries: int = 3,

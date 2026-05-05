@@ -43,7 +43,7 @@ ai.track(
 ```python
 ai = AIGodfather(
     api_key='agf_live_...',                  # required
-    base_url='https://aigodfather.com/api',   # optional
+    base_url='https://www.aigodfather.ai/api',   # optional
     debug=False,                              # optional — enable debug logging
     timeout=10,                               # optional — request timeout in seconds
     default_tags=['production'],              # optional — tags added to every event

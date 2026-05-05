@@ -5,7 +5,7 @@
  * @see https://aigodfather.com/docs
  */
 
-const SDK_VERSION = '2.1.0'
+const SDK_VERSION = '2.2.0'
 
 // ── Types ──────────────────────────────────────────────
 
@@ -609,19 +609,61 @@ export class AIGodfather {
 // ── AIGP-Σ Core Types ──────────────────────────────────
 
 export interface SigmaCertificate {
-  credential_id: string
+  credential_id:    string
+  agent_name:       string
+  tenant_id:        string
+  issued_by:        string
+  issued_at:        string
+  expires_at:       string
+  scope:            string[]
+  /** `"active"` | `"revoked"` | `"expired"` | `"suspended"` */
+  status:           string
+  registry_url:     string
+  badge_url:        string
+  tier?:            string | null
+  org_name?:        string | null
+  model_hash?:      string | null
+  sdk_hash?:        string | null
+  chain_hash?:      string | null
+  anchor_frequency?: string | null
+  last_heartbeat?:  string | null
+}
+
+/** Request body for registering a new certificate — no API key required. */
+export interface SigmaRegisterRequest {
   agent_name: string
-  tenant_id: string
-  issued_by: string
-  issued_at: string
+  scope:      string[]
+  model_hash: string
+  org_name?:  string
+}
+
+/** Response from a successful certificate registration. */
+export interface SigmaRegisterResponse {
+  ok:            boolean
+  credential_id: string
+  agent_name:    string
+  tenant_id:     string
+  status:        string
+  issued_at:     string
+  expires_at:    string
+  scope:         string[]
+  registry_url:  string
+  badge_url:     string
+  tier:          string
+}
+
+/** WP-06: Result of verifying an OTT or DAT token. */
+export interface SigmaTokenVerification {
+  valid:      boolean
+  token_id:   string
+  token_type: string
+  owner_id:   string
+  agent_id:   string
+  action?:    string | null
+  scope?:     string | null
+  target?:    string | null
+  status:     'PENDING' | 'USED' | 'EXPIRED' | string
   expires_at: string
-  scope: string[]
-  /** `"active"` | `"revoked"` | `"expired"` */
-  status: string
-  registry_url: string
-  badge_url: string
-  model_hash?: string | null
-  sdk_hash?: string | null
 }
 
 export interface SigmaPaymentAction {
@@ -660,7 +702,7 @@ export class SigmaError extends Error {
 
 // ── AIGP-Σ SDK Class ──────────────────────────────────
 
-const DEFAULT_SIGMA_REGISTRY = 'https://api.aigpsigma.ai'
+const DEFAULT_SIGMA_REGISTRY = 'https://api.aigpsigma.com'
 
 /**
  * AIGP-Σ Registry client (JS/TS port of the official Rust SDK).
@@ -750,12 +792,123 @@ export class AigpSigma {
     return resp.json()
   }
 
+  /**
+   * Register a new AIGP-Σ certificate directly — no API key required.
+   *
+   * Use `getFingerprint(agentName)` to generate the required `model_hash`.
+   *
+   * @example
+   * ```ts
+   * const sigma = new AigpSigma()
+   * const cert = await sigma.register({
+   *   agent_name: 'my-trading-bot',
+   *   scope: ['read', 'trade'],
+   *   model_hash: await AigpSigma.getFingerprint('my-trading-bot'),
+   *   org_name: 'Acme Corp',
+   * })
+   * console.log(cert.credential_id)
+   * ```
+   */
+  async register(req: SigmaRegisterRequest): Promise<SigmaRegisterResponse> {
+    const resp = await this.sigmaPost(`${this.registryUrl}/v1/certificates/register`, req)
+    const body = await resp.json().catch(() => null)
+    if (!resp.ok) {
+      throw new SigmaError('registry', body?.error ?? `HTTP ${resp.status}`)
+    }
+    return body as SigmaRegisterResponse
+  }
+
+  /**
+   * WP-06: Verify an OTT or DAT token issued by the AIGP-Σ registry.
+   *
+   * - **OTT** (`ott-...`): consumed atomically — `status: "USED"` on first call.
+   * - **DAT** (`dat-...`): validated but not consumed. Pass `jti` for DPoP replay prevention.
+   *
+   * @example
+   * ```ts
+   * const result = await sigma.verifyToken('ott-abc123')
+   * if (result.valid) {
+   *   console.log('Owner:', result.owner_id, '| Action:', result.action)
+   * }
+   * ```
+   */
+  async verifyToken(tokenId: string, jti?: string): Promise<SigmaTokenVerification> {
+    const qs = jti ? `?jti=${encodeURIComponent(jti)}` : ''
+    const resp = await this.sigmaFetch(`${this.registryUrl}/v1/registry/token/${tokenId}${qs}`)
+    const body = await resp.json().catch(() => null)
+    if (resp.status === 401 || resp.status === 404) {
+      return {
+        valid:      false,
+        token_id:   tokenId,
+        token_type: '',
+        owner_id:   '',
+        agent_id:   '',
+        status:     body?.error?.replace('TOKEN_', '') ?? 'INVALID',
+        expires_at: '',
+      }
+    }
+    if (!resp.ok) throw new SigmaError('http', `HTTP ${resp.status}`)
+    return body as SigmaTokenVerification
+  }
+
+  /**
+   * Send a heartbeat for a certificate — proves the agent is online.
+   *
+   * Required within 24h of issuance to keep a free-tier cert active.
+   * Returns `auto_renewed: true` if the cert was auto-renewed (expiry < 30 days).
+   */
+  async heartbeat(credentialId: string): Promise<{ ok: boolean; auto_renewed: boolean }> {
+    const resp = await this.sigmaPost(
+      `${this.registryUrl}/v1/registry/${credentialId}/heartbeat`,
+      {}
+    )
+    if (!resp.ok) throw new SigmaError('registry', `Heartbeat failed: HTTP ${resp.status}`)
+    return resp.json()
+  }
+
+  /**
+   * Generate a deterministic SHA-256 fingerprint for `agentName`.
+   *
+   * The result matches `AigpSigma.getFingerprint()` from the standalone SDK.
+   * Use as `model_hash` when calling `register()`.
+   */
+  static async getFingerprint(agentName: string): Promise<string> {
+    const data   = new TextEncoder().encode(`aigpsigma:v1:${agentName}`)
+    const buffer = await crypto.subtle.digest('SHA-256', data)
+    return Array.from(new Uint8Array(buffer))
+      .map(b => b.toString(16).padStart(2, '0'))
+      .join('')
+  }
+
   private async sigmaFetch(url: string): Promise<Response> {
     const controller = new AbortController()
     const timer = setTimeout(() => controller.abort(), this.timeout)
     try {
       return await fetch(url, {
         headers: { 'User-Agent': `aigpsigma-js/${SDK_VERSION}` },
+        signal: controller.signal,
+      })
+    } catch (err: any) {
+      if (err.name === 'AbortError') {
+        throw new SigmaError('http', `Request timed out after ${this.timeout}ms`)
+      }
+      throw new SigmaError('http', err.message ?? 'Network error')
+    } finally {
+      clearTimeout(timer)
+    }
+  }
+
+  private async sigmaPost(url: string, body: unknown): Promise<Response> {
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), this.timeout)
+    try {
+      return await fetch(url, {
+        method:  'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'User-Agent':   `aigpsigma-js/${SDK_VERSION}`,
+        },
+        body:   JSON.stringify(body),
         signal: controller.signal,
       })
     } catch (err: any) {
